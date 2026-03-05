@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Memoria</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+  <style>
+    :root {
+      --c-yellow:#FFE033; --c-pink:#FF5FA0; --c-blue:#3BBEFC;
+      --c-green:#3DDB85; --c-orange:#FF8C3B; --c-purple:#B66DFF;
+      --c-bg:#FFF8F0; --c-dark:#1A1A2E;
+    }
+    * { box-sizing:border-box; }
+    body { font-family:'Noto Sans JP',sans-serif; background:var(--c-bg); color:var(--c-dark); min-height:100vh; -webkit-overflow-scrolling:touch; overflow-x:hidden; }
+    .fredoka { font-family:'Fredoka One',cursive; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    @keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes gradientShift { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
+    @keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
+
+    #loadingOverlay { position:fixed; inset:0; background:rgba(255,248,240,0.93); z-index:55; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; }
+    #loadingOverlay.hidden { display:none; }
+    .spinner { width:40px; height:40px; border:4px solid #eee; border-top-color:var(--c-pink); border-radius:50%; animation:spin 0.8s linear infinite; }
+
+    #loginOverlay { background:linear-gradient(135deg,#FF5FA0,#B66DFF,#3BBEFC); position:fixed; inset:0; z-index:50; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; padding:24px 20px 40px; overflow-y:auto; }
+    #loginOverlay.hidden { display:none; }
+    .login-card { background:white; border-radius:32px; box-shadow:0 20px 60px rgba(0,0,0,0.2); width:100%; max-width:400px; padding:28px 24px; margin-top:20px; }
+    .member-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .member-btn { background:white; border:2.5px solid #eee; border-radius:18px; padding:14px 10px; font-weight:700; font-size:14px; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:8px; transition:all 0.2s; text-align:center; }
+    .member-btn:active { transform:scale(0.95); }
+    .member-btn.selected { border-color:var(--c-pink); background:#FFF0F7; color:var(--c-pink); box-shadow:0 4px 20px rgba(255,95,160,0.25); transform:scale(1.03); }
+
+    #appHeader { background:var(--c-dark); padding:14px 16px 10px; position:sticky; top:0; z-index:40; }
+    #appHeader.hidden { display:none; }
+    .header-row1 { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+    .logo-text { font-family:'Fredoka One',cursive; font-size:24px; background:linear-gradient(90deg,var(--c-yellow),var(--c-pink),var(--c-blue)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+    .header-user { background:rgba(255,255,255,0.12); border-radius:50px; padding:5px 12px; color:white; font-size:12px; font-weight:700; cursor:pointer; }
+    .header-btns { display:flex; gap:8px; }
+    .header-btn { flex:1; padding:7px 4px; border-radius:10px; font-size:11px; font-weight:700; text-align:center; cursor:pointer; border:none; transition:all 0.15s; }
+    .header-btn:active { transform:scale(0.95); }
+
+    #countdownBanner { margin:12px 16px 0; border-radius:18px; padding:12px 16px; display:none; align-items:center; gap:12px; }
+    #countdownBanner.show { display:flex; }
+
+    #tabNav { position:fixed; bottom:0; left:0; right:0; background:var(--c-dark); display:flex; z-index:40; padding:6px 0 max(6px,env(safe-area-inset-bottom)); border-top:2px solid rgba(255,255,255,0.08); }
+    #tabNav.hidden { display:none; }
+    .tab-btn { flex:1; display:flex; flex-direction:column; align-items:center; gap:2px; padding:3px; cursor:pointer; border:none; background:none; color:rgba(255,255,255,0.35); font-size:9px; font-weight:700; transition:all 0.2s; }
+    .tab-btn .tab-icon { width:38px; height:38px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:18px; transition:all 0.2s; }
+    .tab-btn.active { color:white; }
+    .tab-btn.active .tab-icon { transform:translateY(-4px) scale(1.1); }
+
+    #pageContent { padding:12px 14px 100px; }
+    #pageContent.hidden { display:none; }
+    .page { display:none; animation:fadeIn 0.2s ease; }
+    .page.active { display:block; }
+
+    #partyHero { border-radius:24px; padding:28px 20px; text-align:center; margin-bottom:16px; background:linear-gradient(135deg,#FF5FA0,#FFE033,#3BBEFC); background-size:300% 300%; animation:gradientShift 3s ease infinite; }
+    #normalHero { border-radius:24px; padding:22px 18px; margin-bottom:16px; background:linear-gradient(135deg,#FF5FA0,#B66DFF); color:white; }
+
+    .section-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; margin-top:18px; }
+    .section-title { font-family:'Fredoka One',cursive; font-size:19px; display:flex; align-items:center; gap:6px; }
+    .add-btn { background:var(--c-yellow); color:var(--c-dark); border:none; border-radius:50px; padding:7px 14px; font-weight:900; font-size:12px; cursor:pointer; box-shadow:0 3px 10px rgba(255,224,51,0.4); transition:all 0.15s; display:flex; align-items:center; gap:3px; }
+    .add-btn:active { transform:scale(0.95); }
+
+    .item-card { background:white; border-radius:18px; padding:12px 14px; margin-bottom:9px; box-shadow:0 3px 12px rgba(0,0,0,0.06); position:relative; overflow:hidden; }
+    .item-card::before { content:''; position:absolute; left:0; top:0; bottom:0; width:4px; border-radius:0 3px 3px 0; }
+    .item-card.food::before { background:var(--c-orange); }
+    .item-card.drink::before { background:var(--c-blue); }
+    .item-card.other::before { background:var(--c-purple); }
+    .item-name { font-weight:700; font-size:14px; padding-left:8px; margin-bottom:3px; }
+    .item-meta { font-size:11px; color:#aaa; padding-left:8px; margin-bottom:8px; }
+    .item-actions { display:flex; gap:7px; }
+    .action-btn { flex:1; padding:8px 4px; border-radius:11px; border:2px solid; font-size:11px; font-weight:700; cursor:pointer; transition:all 0.15s; text-align:center; background:white; }
+    .action-btn:active { transform:scale(0.95); }
+    .action-btn.like { border-color:var(--c-orange); color:var(--c-orange); }
+    .action-btn.like.active { background:var(--c-orange); color:white; }
+    .action-btn.want { border-color:var(--c-blue); color:var(--c-blue); }
+    .action-btn.want.active { background:var(--c-blue); color:white; }
+    .action-btn.assign { border-color:var(--c-purple); color:var(--c-purple); }
+    .action-btn.assign.active { background:var(--c-purple); color:white; }
+    .action-btn.bring { border-color:var(--c-green); color:var(--c-green); }
+    .action-btn.bring.active { background:var(--c-green); color:white; }
+    .action-btn.del { border-color:#ddd; color:#ccc; font-size:14px; flex:none; width:36px; padding:8px 4px; }
+    .reaction-list { font-size:10px; color:#bbb; padding-left:8px; margin-top:5px; }
+
+    .bring-banner { border-radius:18px; padding:12px 16px; margin-bottom:14px; background:linear-gradient(135deg,#3DDB85,#3BBEFC); }
+    .settle-card { background:white; border-radius:18px; padding:14px 16px; margin-bottom:9px; box-shadow:0 3px 12px rgba(0,0,0,0.06); }
+    .shop-card { background:white; border-radius:18px; padding:14px 16px; margin-bottom:9px; box-shadow:0 3px 12px rgba(0,0,0,0.06); }
+
+    .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:60; display:flex; align-items:flex-end; backdrop-filter:blur(3px); }
+    .modal-overlay.hidden { display:none; }
+    .modal-sheet { background:white; border-radius:30px 30px 0 0; padding:20px 18px 36px; width:100%; animation:slideUp 0.28s ease; }
+    .modal-handle { width:36px; height:4px; background:#ddd; border-radius:99px; margin:0 auto 16px; }
+    .modal-title { font-family:'Fredoka One',cursive; font-size:20px; text-align:center; margin-bottom:16px; }
+    .form-input { width:100%; border:2.5px solid #eee; border-radius:13px; padding:11px 14px; font-size:14px; margin-bottom:10px; outline:none; transition:border-color 0.2s; }
+    .form-input:focus { border-color:var(--c-pink); }
+    .cat-select { display:flex; gap:7px; margin-bottom:14px; }
+    .cat-option { flex:1; padding:9px 4px; border-radius:11px; border:2.5px solid #eee; font-size:11px; font-weight:700; text-align:center; cursor:pointer; transition:all 0.2s; }
+    .cat-option.sel-food { border-color:var(--c-orange); background:#FFF3EA; color:var(--c-orange); }
+    .cat-option.sel-drink { border-color:var(--c-blue); background:#EAF8FF; color:var(--c-blue); }
+    .cat-option.sel-other { border-color:var(--c-purple); background:#F5EAFF; color:var(--c-purple); }
+    .cat-option.sel-menu { border-color:var(--c-pink); background:#FFF0F7; color:var(--c-pink); }
+    .submit-btn { width:100%; padding:15px; border-radius:14px; border:none; font-family:'Fredoka One',cursive; font-size:17px; cursor:pointer; background:linear-gradient(135deg,var(--c-pink),var(--c-purple)); color:white; box-shadow:0 6px 20px rgba(255,95,160,0.35); transition:all 0.15s; }
+    .submit-btn:active { transform:scale(0.97); }
+    .empty-state { text-align:center; padding:36px 20px; color:#ccc; }
+    .empty-state .big-emoji { font-size:44px; margin-bottom:10px; }
+    .info-row { display:flex; align-items:flex-start; gap:12px; padding:12px 0; border-bottom:1px solid #f0f0f0; }
+    .info-row:last-child { border-bottom:none; }
+  </style>
+</head>
+<body>
+
+<div id="loadingOverlay" class="hidden">
+  <div class="spinner"></div>
+  <p style="font-size:13px;color:#aaa;font-weight:700;">読み込み中…🎀</p>
+</div>
+
+<div id="loginOverlay">
+  <div class="login-card">
+    <div style="text-align:center;margin-bottom:20px;">
+      <div class="fredoka" style="font-size:44px;background:linear-gradient(135deg,#FF5FA0,#B66DFF,#3BBEFC);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Memoria</div>
+      <p style="color:#aaa;font-size:12px;font-weight:700;margin-top:2px;">女子会をもっと楽しく🎉</p>
+    </div>
+    <p style="font-weight:700;color:#666;font-size:13px;text-align:center;margin-bottom:6px;">だれが来たのかな？✨</p>
+    <div id="loginStatus" style="text-align:center;font-size:12px;color:#aaa;min-height:18px;margin-bottom:10px;"></div>
+    <div id="memberGrid" class="member-grid" style="margin-bottom:18px;"></div>
+    <div id="allergyFormWrap" class="hidden">
+      <div style="height:1px;background:#f0f0f0;margin-bottom:16px;"></div>
+      <input type="hidden" id="allergyInput" value="">
+      <button onclick="completeLogin()" class="submit-btn" style="margin-top:4px;">はじめる 🎀</button>
+    </div>
+  </div>
+  <div style="margin-top:16px;text-align:center;">
+    <button onclick="hardReset()" style="background:rgba(255,255,255,0.2);border:none;border-radius:50px;padding:8px 20px;color:white;font-size:12px;font-weight:700;cursor:pointer;">
+      🔄 うまく入れないときはここを押してね
+    </button>
+  </div>
+</div>
+
+<header id="appHeader" class="hidden">
+  <div class="header-row1">
+    <span class="logo-text fredoka">✨ Memoria</span>
+    <div id="userDisp" class="header-user" onclick="confirmLogout()">Guest</div>
+  </div>
+  <div class="header-btns">
+    <button onclick="showInfo()" class="header-btn" style="background:#3BBEFC1A;color:#3BBEFC;">📍 道順・情報</button>
+    <button onclick="openChat()" class="header-btn" style="position:relative; background:#FF8C3B1A;color:#FF8C3B;">
+      💬 チャット
+      <span id="chatBadgeHeader" class="hidden" style="position:absolute; top:-2px; right:-2px; width:10px; height:10px; background:#FF3B3B; border-radius:50%; border:2px solid white;"></span>
+    </button>
+    <button onclick="openAlbum()" class="header-btn" style="background:#FF5FA01A;color:#FF5FA0;">📸 写真</button>
+  </div>
+</header>
+
+<div id="countdownBanner">
+  <span style="font-size:28px;" id="countdownEmoji">⏳</span>
+  <div>
+    <p id="countdownText" style="font-weight:900;font-size:14px;color:white;"></p>
+    <p id="countdownSub" style="font-size:11px;opacity:0.85;color:white;"></p>
+  </div>
+</div>
+
+<div id="pageContent" class="hidden">
+  <div id="page-home" class="page active">
+    <div id="partyHero" class="hidden">
+      <div style="font-size:48px;margin-bottom:8px;">🎉</div>
+      <div class="fredoka" style="font-size:30px;color:white;text-shadow:0 2px 10px rgba(0,0,0,0.2);">今日は女子会！！</div>
+      <p style="color:white;opacity:0.9;font-size:13px;margin-top:6px;">楽しんでいこう〜！🥳</p>
+    </div>
+    <div id="normalHero">
+      <p class="fredoka" style="font-size:26px;color:white;margin-bottom:4px;">みんなで決めよう！🎉</p>
+      <p style="color:rgba(255,255,255,0.8);font-size:12px;">下のタブからカテゴリを選んでね</p>
+    </div>
+
+    <div style="background:white;border-radius:18px;padding:14px;margin-bottom:14px;box-shadow:0 3px 12px rgba(0,0,0,0.06);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <p style="font-weight:900;font-size:13px;color:#666;display:flex;align-items:center;gap:6px;">
+          💬 連絡ボード
+          <span id="chatBadgeMini" class="hidden" style="width:8px;height:8px;background:#FF3B3B;border-radius:50%;"></span>
+        </p>
+        <button onclick="openChat()" style="background:#FFF0F7;border:none;border-radius:12px;padding:5px 10px;font-size:11px;font-weight:700;color:var(--c-pink);cursor:pointer;">すべて見る ＞</button>
+      </div>
+      <div id="miniChatList" style="display:flex;flex-direction:column;gap:8px;font-size:12px;"></div>
+    </div>
+
+    <div style="background:white;border-radius:18px;padding:16px;margin-bottom:14px;box-shadow:0 3px 12px rgba(0,0,0,0.06);border:2px solid var(--c-pink);">
+      <p class="fredoka" style="font-size:16px;color:var(--c-pink);margin-bottom:10px;text-align:center;">⏰ スケジュール＆ルール</p>
+      <div style="display:flex;justify-content:space-around;font-weight:700;font-size:13px;color:#666;margin-bottom:12px;background:#f9f9f9;border-radius:12px;padding:10px 0;">
+        <div style="text-align:center;">🚪 開場<br><span style="color:var(--c-dark);font-size:16px;">19:00</span></div>
+        <div style="text-align:center;">🥂 乾杯<br><span style="color:var(--c-dark);font-size:16px;">19:15</span></div>
+        <div style="text-align:center;">👋 最終退館<br><span style="color:var(--c-dark);font-size:16px;">7:00</span></div>
+      </div>
+      <div style="background:#FFF0F7;border-radius:12px;padding:12px;font-size:12px;color:#d81b60;font-weight:700;text-align:center;line-height:1.5;">
+        🚶‍♀️ 退出ルール：いつでも退出可能！<br>
+        <span style="font-size:11px;opacity:0.9;">※最後の人は必ず<a href="#" onclick="showManual();return false;" style="text-decoration:underline;color:var(--c-pink);">お片付けルール</a>を読んでね🧹</span>
+      </div>
+    </div>
+
+    <div id="quickStats" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;"></div>
+    <div class="allergy-section">
+      <div onclick="toggleAllergy()" style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:white;border-radius:14px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
+        <span style="font-size:13px;font-weight:700;color:#666;">🙅 アレルギー・苦手なものメモ</span>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <button onclick="event.stopPropagation();openAllergyEdit()" style="background:none;border:none;font-size:11px;color:var(--c-pink);font-weight:700;cursor:pointer;">✏️ アレルギー等はこちらから登録</button>
+          <div style="background:#f5f5f5; border:1px solid #eee; padding:6px 12px; border-radius:20px; display:flex; align-items:center; gap:4px; box-shadow:0 2px 4px rgba(0,0,0,0.02);">
+            <span style="font-size:11px; font-weight:700; color:#666;">一覧</span>
+            <span id="allergyChevron" style="color:#666; font-size:10px; display:inline-block; transition:transform 0.2s;">▼</span>
+          </div>
+        </div>
+      </div>
+      <div id="allergyList" style="display:none;margin-top:8px;"></div>
+    </div>
+  </div>
+
+  <div id="page-food" class="page">
+    <div id="bringBannerFood" class="bring-banner hidden">
+      <p style="color:white;font-weight:700;font-size:11px;margin-bottom:4px;">🏠 あなたが持参するもの</p>
+      <ul id="bringItemsFood" style="color:white;font-size:12px;padding-left:16px;"></ul>
+    </div>
+    <div class="section-header" style="margin-top:4px;">
+      <span class="section-title" style="color:var(--c-orange);">🍕 食べ物</span>
+      <button class="add-btn" onclick="openAddModal('食べ物')">＋ 追加</button>
+    </div>
+    <div id="list-食べ物"></div>
+  </div>
+
+  <div id="page-drink" class="page">
+    <div class="section-header" style="margin-top:4px;">
+      <span class="section-title" style="color:var(--c-blue);">🥂 飲み物</span>
+      <button class="add-btn" onclick="openAddModal('飲み物')">＋ 追加</button>
+    </div>
+    <div id="list-飲み物"></div>
+  </div>
+
+  <div id="page-other" class="page">
+    <div class="section-header" style="margin-top:4px;">
+      <span class="section-title" style="color:var(--c-purple);">🎁 その他・備品</span>
+      <button class="add-btn" onclick="openAddModal('その他')">＋ 追加</button>
+    </div>
+    <div id="list-その他"></div>
+  </div>
+
+  <div id="page-menu" class="page">
+    <div class="section-header" style="margin-top:4px;">
+      <span class="section-title" style="color:var(--c-pink);">🍳 料理メニュー案</span>
+      <button class="add-btn" onclick="openAddModal('メニュー')">＋ 追加</button>
+    </div>
+    <p style="font-size:12px;color:#aaa;margin-bottom:12px;">みんなで作りたいメニューを提案しよう！</p>
+    <div style="background:white; border-radius:18px; padding:14px; margin-bottom:18px; box-shadow:0 3px 12px rgba(0,0,0,0.06); border-left:5px solid var(--c-pink);">
+      <p style="font-weight:900; font-size:13px; color:var(--c-pink); margin-bottom:8px;">🏠 会場のキッチン設備</p>
+      <div style="font-size:11px; color:#666; line-height:1.6;">
+        <p><strong>【機器】</strong> 電子レンジ / 電気ケトル / IHヒーター / 冷蔵庫</p>
+        <p><strong>【道具】</strong> 鍋・フライパン / 包丁 / ピーラー / 計量カップ</p>
+        <p style="margin-top:4px; color:#d81b60; font-weight:700;">⚠️ 揚げ物NG / 調味料は持参してね！</p>
+      </div>
+    </div>
+    <div id="list-メニュー"></div>
+  </div>
+
+  <div id="page-settle" class="page">
+    <div class="section-header" style="margin-top:4px;">
+      <span class="section-title" style="color:var(--c-green);">💰 精算</span>
+    </div>
+    <div style="background:white;border-radius:18px;padding:16px;margin-bottom:14px;box-shadow:0 3px 12px rgba(0,0,0,0.06);">
+      <p class="fredoka" style="font-size:15px;margin-bottom:10px;">🏪 お店・金額を追加</p>
+      <input type="text" id="shopName" class="form-input" placeholder="お店の名前（例：業務スーパー）" style="margin-bottom:8px;">
+      <input type="number" id="shopAmount" class="form-input" placeholder="金額 ¥">
+      <button onclick="addShopEntry()" class="submit-btn" style="font-size:14px;padding:12px;">追加する</button>
+    </div>
+    <div id="shopList"></div>
+    <div id="settleContent"></div>
+  </div>
+</div>
+
+<nav id="tabNav" class="hidden">
+  <button class="tab-btn active" data-page="home" onclick="switchTab('home')"><div class="tab-icon" style="background:linear-gradient(135deg,#FF5FA0,#B66DFF);">🏠</div><span>ホーム</span></button>
+  <button class="tab-btn" data-page="food" onclick="switchTab('food')"><div class="tab-icon">🍕</div><span>食べ物</span></button>
+  <button class="tab-btn" data-page="drink" onclick="switchTab('drink')"><div class="tab-icon">🥂</div><span>飲み物</span></button>
+  <button class="tab-btn" data-page="other" onclick="switchTab('other')"><div class="tab-icon">🎁</div><span>その他</span></button>
+  <button class="tab-btn" data-page="menu" onclick="switchTab('menu')"><div class="tab-icon">🍳</div><span>メニュー</span></button>
+  <button class="tab-btn" data-page="settle" onclick="switchTab('settle')"><div class="tab-icon">💰</div><span>精算</span></button>
+</nav>
+
+<div id="addModal" class="modal-overlay hidden" onclick="closeAddModal(event)">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div id="addModalTitle" class="modal-title">追加</div>
+    <input type="text" id="addItemName" class="form-input" placeholder="内容を入力">
+    <div class="cat-select" id="catSelect">
+      <div class="cat-option" data-cat="食べ物" onclick="selectCat('食べ物')">🍕 食べ物</div>
+      <div class="cat-option" data-cat="飲み物" onclick="selectCat('飲み物')">🥂 飲み物</div>
+      <div class="cat-option" data-cat="その他" onclick="selectCat('その他')">🎁 その他</div>
+      <div class="cat-option" data-cat="メニュー" onclick="selectCat('メニュー')">🍳 メニュー</div>
+    </div>
+    <button class="submit-btn" onclick="submitAdd()">追加する！✨</button>
+  </div>
+</div>
+
+<div id="allergyModal" class="modal-overlay hidden" onclick="closeAllergyModal(event)">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-title">🙅 アレルギー・苦手なものを編集</div>
+    <p style="font-size:12px;color:#aaa;margin-bottom:12px;text-align:center;">あなた（<span id="allergyEditName"></span>）の情報</p>
+    <input type="text" id="allergyEditInput" class="form-input" placeholder="例：エビNG・パクチー苦手">
+    <button class="submit-btn" onclick="saveAllergyEdit()">保存する</button>
+  </div>
+</div>
+
+<div id="infoModal" class="modal-overlay hidden" onclick="hideInfo(event)">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-title">📍 道順・会場情報</div>
+    <div id="infoContent"></div>
+    <button onclick="hideInfo()" style="width:100%;margin-top:16px;padding:13px;border-radius:13px;border:none;background:#f5f5f5;font-weight:700;font-size:14px;cursor:pointer;">閉じる</button>
+  </div>
+</div>
+
+<div id="manualModal" class="modal-overlay hidden" onclick="hideManual(event)">
+  <div class="modal-sheet" style="background:var(--c-dark);" onclick="event.stopPropagation()">
+    <div class="modal-handle" style="background:rgba(255,255,255,0.2);"></div>
+    <div class="modal-title" style="color:white;">🧹 お片付けルール</div>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <div style="background:rgba(255,255,255,0.07);border-radius:14px;padding:14px;display:flex;gap:12px;"><span style="font-size:22px;">⏰</span><div><p style="font-weight:700;color:white;font-size:13px;">退出30分前から掃除スタート</p><p style="color:#888;font-size:11px;margin-top:2px;">早めに始めて余裕を持って！</p></div></div>
+      <div style="background:rgba(255,255,255,0.07);border-radius:14px;padding:14px;display:flex;gap:12px;"><span style="font-size:22px;">🗑️</span><div><p style="font-weight:700;color:white;font-size:13px;">ゴミを分別して1F右手へ</p><p style="color:#888;font-size:11px;margin-top:2px;">指定のゴミ箱に分けて捨てよう</p></div></div>
+      <div style="background:rgba(255,255,255,0.07);border-radius:14px;padding:14px;display:flex;gap:12px;"><span style="font-size:22px;">🔑</span><div><p style="font-weight:700;color:white;font-size:13px;">カギを <span style="color:var(--c-yellow);">「0000」</span> に戻す</p><p style="color:#888;font-size:11px;margin-top:2px;">絶対忘れずに！！</p></div></div>
+      <div style="background:rgba(255,255,255,0.07);border-radius:14px;padding:14px;display:flex;gap:12px;"><span style="font-size:22px;">📸</span><div><p style="font-weight:700;color:white;font-size:13px;">退出報告写真を3枚</p><p style="color:#888;font-size:11px;margin-top:2px;">リビング・キッチン・カギ</p></div></div>
+    </div>
+    <button onclick="hideManual()" style="width:100%;margin-top:16px;padding:13px;border-radius:13px;border:none;background:rgba(255,255,255,0.1);color:white;font-weight:700;font-size:14px;cursor:pointer;">閉じる</button>
+  </div>
+</div>
+
+<div id="chatModal" class="modal-overlay hidden" onclick="closeChat(event)">
+  <div class="modal-sheet" style="height:85vh; display:flex; flex-direction:column; padding:20px 14px;" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div class="modal-title" style="margin-bottom:0;">💬 チャット</div>
+      <span id="readCountDisp" style="font-size:11px;color:#aaa;background:#f5f5f5;padding:4px 8px;border-radius:10px;font-weight:700;">既読 --人</span>
+    </div>
+    <div id="chatFullList" style="flex:1; overflow-y:auto; background:#FFF8F0; border-radius:14px; padding:12px; display:flex; flex-direction:column; gap:12px; margin-bottom:12px; border:2px solid #eee;"></div>
+    <div style="display:flex; gap:8px;">
+      <input type="text" id="chatInput" class="form-input" style="margin-bottom:0; flex:1;" placeholder="メッセージを入力...">
+      <button onclick="sendChat()" class="submit-btn" style="width:60px; padding:10px 0; font-size:14px; flex:none;">送信</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // 👇👇👇 ここにGASのWebアプリURL（/execで終わるもの）を貼り付けてください！ 👇👇👇
+  const GAS_URL = 'https://script.google.com/macros/s/AKfycbz8YvVnlpFYFgqm2u4sTOjhtER4HQyjVI-RmsuhcDQloRsFrYYE8198hrfshTFqaH0x/exec';
+
+  var myName = '';
+  var isKanji = false;
+  var appData = { members: [], items: [], info: {}, shops: [], chats: [] };
+  var addingCat = '食べ物';
+  var STORAGE_KEY = 'memoria_user';
+  var STORAGE_DATE_KEY = 'memoria_login_date';
+  var LOGIN_DAYS = 30;
+  var avatarEmojis = ['🌸','🌟','💎','🌈','🦋','🍀','🎀','🌺'];
+  var colorList = ['#FF5FA0','#3BBEFC','#FF8C3B','#B66DFF','#3DDB85','#FFE033','#FF6B6B','#4ECDC4'];
+  var pollingTimer = null;
+
+  function showLoading() { document.getElementById('loadingOverlay').classList.remove('hidden'); }
+  function hideLoading() { document.getElementById('loadingOverlay').classList.add('hidden'); }
+
+  // 📡 API通信用のマジック関数
+  function callAPI(payload, onSuccess, onFailure) {
+    fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) })
+      .then(function(r) { return r.json(); })
+      .then(function(res) {
+        if (res.status === 'success') { if (onSuccess) onSuccess(res.data); }
+        else { console.error(res.message); if (onFailure) onFailure(res.message); }
+      })
+      .catch(function(e) { console.error(e); if (onFailure) onFailure(e); });
+  }
+
+  function showApp() {
+    document.getElementById('loginOverlay').classList.add('hidden');
+    document.getElementById('appHeader').classList.remove('hidden');
+    document.getElementById('pageContent').classList.remove('hidden');
+    document.getElementById('tabNav').classList.remove('hidden');
+  }
+
+  function hardReset() {
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(STORAGE_DATE_KEY);
+    if (pollingTimer) clearInterval(pollingTimer);
+    myName = ''; isKanji = false;
+    appData = { members: [], items: [], info: {}, shops: [], chats: [] };
+    document.getElementById('appHeader').classList.add('hidden');
+    document.getElementById('pageContent').classList.add('hidden');
+    document.getElementById('tabNav').classList.add('hidden');
+    document.getElementById('allergyFormWrap').classList.add('hidden');
+    document.getElementById('allergyInput').value = '';
+    document.getElementById('memberGrid').innerHTML = '';
+    document.getElementById('loginStatus').textContent = '';
+    document.getElementById('loginOverlay').classList.remove('hidden');
+    hideLoading();
+    showLogin();
+  }
+
+  function confirmLogout() { if (confirm(myName + ' ちゃん、ログアウトする？')) hardReset(); }
+
+  function init() {
+    var savedName = localStorage.getItem(STORAGE_KEY);
+    var savedDate = localStorage.getItem(STORAGE_DATE_KEY);
+    if (savedName && savedDate) {
+      if ((Date.now() - parseInt(savedDate)) / (1000*60*60*24) < LOGIN_DAYS) { myName = savedName; }
+      else { localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(STORAGE_DATE_KEY); }
+    }
+    if (!myName) showLogin(); else loadApp();
+  }
+
+  function showLogin() {
+    document.getElementById('loginOverlay').classList.remove('hidden');
+    document.getElementById('loginStatus').textContent = '名前を読み込み中…';
+    callAPI({ action: 'getMembers' }, function(names) {
+      document.getElementById('loginStatus').textContent = '';
+      renderMemberGrid(names || []);
+    }, function(err) { document.getElementById('loginStatus').textContent = '⚠️ 読み込み失敗'; });
+  }
+
+  function renderMemberGrid(names) {
+    var grid = document.getElementById('memberGrid');
+    grid.innerHTML = '';
+    if (!names || names.length === 0) { grid.innerHTML = '<p style="color:#aaa;font-size:12px;text-align:center;grid-column:1/-1;">メンバーが見つかりません</p>'; return; }
+    names.forEach(function(name, i) {
+      var btn = document.createElement('button');
+      btn.className = 'member-btn';
+      btn.innerHTML = '<div style="font-size:28px;">' + avatarEmojis[i%avatarEmojis.length] + '</div><div style="font-size:13px;">' + name + '</div>';
+      btn.onclick = function() {
+        myName = name;
+        document.querySelectorAll('.member-btn').forEach(function(b) { b.classList.remove('selected'); });
+        btn.classList.add('selected');
+        document.getElementById('allergyFormWrap').classList.remove('hidden');
+      };
+      grid.appendChild(btn);
+    });
+  }
+
+  function completeLogin() {
+    if (!myName) { alert('名前を選んでね！'); return; }
+    var allergy = document.getElementById('allergyInput').value;
+    showLoading();
+    callAPI({ action: 'saveAllergyOnly', name: myName, allergy: allergy }, function(data) {
+      hideLoading();
+      if (!data || !data.members) { alert('データ取得失敗'); return; }
+      appData = data;
+      localStorage.setItem(STORAGE_KEY, myName); localStorage.setItem(STORAGE_DATE_KEY, Date.now().toString());
+      var me = appData.members.find(function(m) { return m.name === myName; });
+      isKanji = me && me.role === '幹事';
+      showApp(); renderAll(); setupCountdown(); startPolling();
+    }, function() { hideLoading(); alert('エラーが発生しました'); });
+  }
+
+  function loadApp() {
+    showLoading();
+    callAPI({ action: 'getFullData' }, function(data) {
+      hideLoading();
+      if (!data || !data.members) { hardReset(); return; }
+      appData = data;
+      var found = appData.members.find(function(m) { return m.name === myName; });
+      if (!found) { hardReset(); return; }
+      isKanji = found.role === '幹事';
+      showApp(); renderAll(); setupCountdown(); startPolling();
+    }, function() { hideLoading(); hardReset(); });
+  }
+
+  function startPolling() {
+    if (pollingTimer) clearInterval(pollingTimer);
+    pollingTimer = setInterval(function() {
+      if (myName) { callAPI({ action: 'getFullData' }, function(data) { if (data) { appData = data; renderAll(); } }); }
+    }, 10000);
+  }
+
+  function setupCountdown() {
+    var partyDate = (appData.info && appData.info['party_date']) ? appData.info['party_date'] : '';
+    if (!partyDate) return;
+    var today = new Date(); today.setHours(0,0,0,0);
+    var party = new Date(partyDate); party.setHours(0,0,0,0);
+    var diff = Math.round((party - today) / (1000*60*60*24));
+    var banner = document.getElementById('countdownBanner');
+    var partyHero = document.getElementById('partyHero'), normalHero = document.getElementById('normalHero');
+    if (diff === 0) { partyHero.classList.remove('hidden'); normalHero.classList.add('hidden'); setTimeout(function(){ confetti({particleCount:200,spread:120,origin:{y:0.5}}); }, 600); }
+    else if (diff === 1) { banner.style.background = 'linear-gradient(135deg,#FF5FA0,#FFE033)'; banner.classList.add('show'); document.getElementById('countdownEmoji').textContent = '🏠'; document.getElementById('countdownText').textContent = '明日は女子会！！'; document.getElementById('countdownSub').textContent = '持ち物チェックを忘れずに🎀'; }
+    else if (diff > 1 && diff <= 7) { banner.style.background = 'linear-gradient(135deg,#B66DFF,#3BBEFC)'; banner.classList.add('show'); document.getElementById('countdownEmoji').textContent = '🎊'; document.getElementById('countdownText').textContent = 'あと ' + diff + ' 日！！'; document.getElementById('countdownSub').textContent = '楽しみすぎる〜！準備しておこう✨'; }
+    else if (diff > 7) { banner.style.background = 'linear-gradient(135deg,#3BBEFC,#3DDB85)'; banner.classList.add('show'); document.getElementById('countdownEmoji').textContent = '📅'; document.getElementById('countdownText').textContent = 'あと ' + diff + ' 日！'; document.getElementById('countdownSub').textContent = 'まずはメニューを決めよう🍕'; }
+  }
+
+  function renderAll() {
+    document.getElementById('userDisp').textContent = myName + ' ちゃん🎀';
+    renderHome(); renderChat(); renderItemList('食べ物'); renderItemList('飲み物'); renderItemList('その他'); renderItemList('メニュー'); renderSettle();
+  }
+
+  function renderHome() {
+    var food = appData.items.filter(function(i) { return i.cat === '食べ物'; }).length;
+    var drink = appData.items.filter(function(i) { return i.cat === '飲み物'; }).length;
+    var menu = appData.items.filter(function(i) { return i.cat === 'メニュー'; }).length;
+    document.getElementById('quickStats').innerHTML =
+      '<div style="background:linear-gradient(135deg,#FF8C3B,#FF5FA0);border-radius:14px;padding:12px;text-align:center;color:white;cursor:pointer;" onclick="switchTab(\'food\')"><div class="fredoka" style="font-size:22px;">' + food + '</div><div style="font-size:10px;opacity:0.85;">🍕 食べ物</div></div>' +
+      '<div style="background:linear-gradient(135deg,#3BBEFC,#B66DFF);border-radius:14px;padding:12px;text-align:center;color:white;cursor:pointer;" onclick="switchTab(\'drink\')"><div class="fredoka" style="font-size:22px;">' + drink + '</div><div style="font-size:10px;opacity:0.85;">🥂 飲み物</div></div>' +
+      '<div style="background:linear-gradient(135deg,#FF5FA0,#B66DFF);border-radius:14px;padding:12px;text-align:center;color:white;cursor:pointer;" onclick="switchTab(\'menu\')"><div class="fredoka" style="font-size:22px;">' + menu + '</div><div style="font-size:10px;opacity:0.85;">🍳 メニュー</div></div>';
+
+    var listEl = document.getElementById('allergyList');
+    if (listEl) {
+      listEl.innerHTML = '';
+      appData.members.forEach(function(m, i) {
+        var row = document.createElement('div');
+        row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px 14px;background:white;border-radius:12px;margin-bottom:6px;box-shadow:0 2px 6px rgba(0,0,0,0.04);';
+        row.innerHTML = '<div style="width:32px;height:32px;border-radius:50%;background:' + colorList[i%colorList.length] + '20;display:flex;align-items:center;justify-content:center;font-size:16px;">' + avatarEmojis[i%avatarEmojis.length] + '</div><div style="flex:1;"><p style="font-weight:700;font-size:13px;">' + m.name + '</p><p style="font-size:11px;color:' + (m.allergy ? '#FF5FA0' : '#bbb') + ';">' + (m.allergy || 'なし') + '</p></div>';
+        listEl.appendChild(row);
+      });
+    }
+  }
+
+  function renderChat() {
+    var chats = appData.chats || [];
+    var me = appData.members.find(function(m) { return m.name === myName; });
+    var myLastRead = me ? me.lastRead : "";
+    var hasUnread = false;
+    if (chats.length > 0) { if (!myLastRead || new Date(chats[chats.length - 1].date) > new Date(myLastRead)) hasUnread = true; }
+    
+    if (hasUnread) { document.getElementById('chatBadgeHeader').classList.remove('hidden'); document.getElementById('chatBadgeMini').classList.remove('hidden'); }
+    else { document.getElementById('chatBadgeHeader').classList.add('hidden'); document.getElementById('chatBadgeMini').classList.add('hidden'); }
+
+    var miniList = document.getElementById('miniChatList');
+    if (miniList) {
+      if (chats.length === 0) { miniList.innerHTML = '<p style="text-align:center;color:#ccc;padding:10px 0;">まだメッセージはないよ！</p>'; }
+      else {
+        var miniHtml = '';
+        chats.slice(-2).forEach(function(c) {
+          miniHtml += '<div style="display:flex; gap:6px; align-items:flex-start;"><div style="font-weight:700; flex:none; color:' + (c.name===myName ? 'var(--c-pink)' : '#888') + ';">' + c.name + ':</div><div style="color:#333; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + c.text + '</div></div>';
+        });
+        miniList.innerHTML = miniHtml;
+      }
+    }
+
+    var fullList = document.getElementById('chatFullList');
+    if (fullList) {
+      var isScrolledToBottom = fullList.scrollHeight - fullList.clientHeight <= fullList.scrollTop + 10;
+      if (chats.length === 0) { fullList.innerHTML = '<p style="text-align:center;color:#ccc;padding:20px 0;">一番のりでメッセージを送ろう！✨</p>'; }
+      else {
+        var fullHtml = '';
+        chats.forEach(function(c) {
+          var time = c.date ? c.date.slice(11, 16) : '';
+          if (c.name === myName) {
+            fullHtml += '<div style="display:flex; justify-content:flex-end; margin-bottom:6px;"><div style="display:flex; flex-direction:column; align-items:flex-end;"><div style="background:var(--c-pink); color:white; padding:8px 12px; border-radius:14px 14px 0 14px; font-size:13px; max-width:220px; word-break:break-all;">' + c.text + '</div><span style="font-size:9px; color:#aaa; margin-top:2px;">' + time + '</span></div></div>';
+          } else {
+            fullHtml += '<div style="display:flex; justify-content:flex-start; margin-bottom:6px;"><div style="display:flex; flex-direction:column; align-items:flex-start;"><span style="font-size:10px; color:#888; margin-bottom:2px; padding-left:4px;">' + c.name + '</span><div style="display:flex; align-items:flex-end; gap:4px;"><div style="background:white; color:#333; padding:8px 12px; border-radius:14px 14px 14px 0; font-size:13px; max-width:220px; word-break:break-all; box-shadow:0 2px 4px rgba(0,0,0,0.05);">' + c.text + '</div><span style="font-size:9px; color:#aaa;">' + time + '</span></div></div></div>';
+          }
+        });
+        fullList.innerHTML = fullHtml;
+      }
+      if (isScrolledToBottom) fullList.scrollTop = fullList.scrollHeight;
+    }
+
+    if (chats.length > 0) {
+      var latestTime = new Date(chats[chats.length - 1].date);
+      var readCount = 0;
+      appData.members.forEach(function(m) { if (m.name !== myName && m.lastRead && new Date(m.lastRead) >= latestTime) readCount++; });
+      var disp = document.getElementById('readCountDisp');
+      if (disp) disp.textContent = '既読 ' + readCount + '人';
+    }
+  }
+
+  function openChat() {
+    document.getElementById('chatModal').classList.remove('hidden');
+    var list = document.getElementById('chatFullList'); if(list) list.scrollTop = list.scrollHeight;
+    document.getElementById('chatBadgeHeader').classList.add('hidden'); document.getElementById('chatBadgeMini').classList.add('hidden');
+    callAPI({ action: 'updateReadTime', name: myName }, function(data) { if (data) { appData = data; renderAll(); } });
+  }
+  function closeChat(e) { if (!e || e.target === document.getElementById('chatModal') || e.target.id === 'closeChatBtn') document.getElementById('chatModal').classList.add('hidden'); }
+  function sendChat() {
+    var input = document.getElementById('chatInput'); var text = input.value.trim(); if (!text) return; input.value = '';
+    callAPI({ action: 'sendChatMessage', name: myName, text: text }, function(data) {
+      if(data) { appData = data; renderAll(); var list = document.getElementById('chatFullList'); if(list) list.scrollTop = list.scrollHeight; }
+    });
+  }
+
+  function renderItemList(cat) {
+    var catClass = {'食べ物':'food','飲み物':'drink','その他':'other','メニュー':'food'};
+    var el = document.getElementById('list-' + cat); if (!el) return;
+    var items = appData.items.filter(function(i) { return i.cat === cat; });
+    if (items.length === 0) { el.innerHTML = '<div class="empty-state"><div class="big-emoji">🤔</div><p>まだ何もないよ！<br>「＋ 追加」ボタンで追加しよう</p></div>'; return; }
+    el.innerHTML = '';
+    items.forEach(function(item) {
+      var isLiked = item.names && item.names.split(',').map(function(n){return n.trim();}).indexOf(myName) >= 0;
+      var isBring = item.owner === myName;
+      var likeCount = item.names ? item.names.split(',').filter(function(n){return n.trim();}).length : 0;
+      var reactBtn = '';
+      if (cat === '食べ物') { reactBtn = '<button class="action-btn like ' + (isLiked?'active':'') + '" onclick="doAction(' + item.id + ',\'反応\')">' + (isLiked?'❤️':'🤍') + ' いいね！' + (likeCount>0?' '+likeCount:'') + '</button>'; }
+      else if (cat === '飲み物') { reactBtn = '<button class="action-btn want ' + (isLiked?'active':'') + '" onclick="doAction(' + item.id + ',\'反応\')">' + (isLiked?'🙋‍♀️':'🙋') + ' 飲みたい！' + (likeCount>0?' '+likeCount:'') + '</button><button class="action-btn" onclick="changeCount(' + item.id + ',-1)" style="flex:none;width:34px;padding:8px 0;border-color:#ddd;color:#aaa;">－</button><span style="min-width:22px;text-align:center;font-weight:700;font-size:14px;align-self:center;">' + ((item.counts&&item.counts[myName])?item.counts[myName]:0) + '</span><button class="action-btn" onclick="changeCount(' + item.id + ',1)" style="flex:none;width:34px;padding:8px 0;border-color:var(--c-blue);color:var(--c-blue);">＋</button>'; }
+      else if (cat === 'メニュー') { reactBtn = '<button class="action-btn like ' + (isLiked?'active':'') + '" onclick="doAction(' + item.id + ',\'反応\')">' + (isLiked?'❤️':'🤍') + ' 作りたい！' + (likeCount>0?' '+likeCount:'') + '</button>'; }
+      else { reactBtn = '<button class="action-btn assign ' + (isLiked?'active':'') + '" onclick="doAction(' + item.id + ',\'反応\')">' + (isLiked?'🤝':'👋') + ' 担当する！</button>'; }
+      var bringBtn = (cat !== 'メニュー') ? '<button class="action-btn bring ' + (isBring?'active':'') + '" onclick="doAction(' + item.id + ',\'持参\')">🏠 ' + (isBring?'持参✓':'持参する') + '</button>' : '';
+      var delBtn = isKanji ? '<button class="action-btn del" onclick="deleteItem(' + item.id + ')" title="削除">🗑</button>' : '';
+      var reactionNames = item.names ? item.names.split(',').map(function(n){return n.trim();}).filter(Boolean).join(' · ') : '';
+      var card = document.createElement('div'); card.className = 'item-card ' + (catClass[cat] || 'food');
+      card.innerHTML = '<div class="item-name">' + item.text + '</div><div class="item-meta">' + (item.owner ? '🏠 ' + item.owner + ' が持参' : '') + '</div><div class="item-actions">' + reactBtn + bringBtn + delBtn + '</div>' + (reactionNames ? '<div class="reaction-list">👥 ' + reactionNames + '</div>' : '');
+      el.appendChild(card);
+    });
+    if (cat === '食べ物') {
+      var brings = appData.items.filter(function(i) { return i.owner === myName; });
+      var banner = document.getElementById('bringBannerFood'), list = document.getElementById('bringItemsFood');
+      if (banner && list) { if (brings.length > 0) { banner.classList.remove('hidden'); list.innerHTML = brings.map(function(i) { return '<li>' + i.text + '</li>'; }).join(''); } else { banner.classList.add('hidden'); } }
+    }
+  }
+
+  function renderSettle() {
+    var shopListEl = document.getElementById('shopList'); var shops = appData.shops || []; shopListEl.innerHTML = '';
+    shops.forEach(function(s, idx) {
+      var card = document.createElement('div'); card.className = 'shop-card'; card.style.display = 'flex'; card.style.justifyContent = 'space-between'; card.style.alignItems = 'center';
+      card.innerHTML = '<div><p style="font-weight:700;font-size:14px;">🏪 ' + s.name + '</p><p style="font-size:12px;color:#aaa;">¥' + Number(s.amount).toLocaleString() + '</p></div>' + (isKanji ? '<button onclick="deleteShop(' + idx + ')" style="background:none;border:none;color:#ddd;font-size:18px;cursor:pointer;">🗑</button>' : '');
+      shopListEl.appendChild(card);
+    });
+    var total = shops.reduce(function(s, x) { return s + (Number(x.amount)||0); }, 0), count = appData.members.length, perPerson = count > 0 ? Math.floor((total / count) / 10) * 10 : 0;
+    var membersHtml = '';
+    if (isKanji) { membersHtml = '<div class="section-header" style="margin-top:4px;"><span class="section-title" style="color:var(--c-green);font-size:16px;">👛 全員の支払い状況</span></div>' + appData.members.map(function(m) { return '<div class="settle-card" style="display:flex;align-items:center;justify-content:space-between;"><span style="font-weight:700;font-size:14px;">' + m.name + '</span><span style="padding:5px 12px;border-radius:50px;font-size:11px;font-weight:700;background:' + (m.paid?'#3DDB8520':'#FF5FA020') + ';color:' + (m.paid?'#3DDB85':'#FF5FA0') + ';">' + (m.paid?'✅ 支払い済み':'⏳ 未払い') + '</span></div>'; }).join(''); }
+    else { var me = appData.members.find(function(m) { return m.name === myName; }); if (me) { membersHtml = '<div style="background:white;border-radius:18px;padding:16px;box-shadow:0 3px 12px rgba(0,0,0,0.06);display:flex;align-items:center;justify-content:space-between;"><div><p style="font-weight:700;font-size:14px;">あなたの支払い</p><p style="font-size:11px;color:#aaa;margin-top:2px;">¥' + perPerson.toLocaleString() + ' / 人</p></div><span style="padding:7px 16px;border-radius:50px;font-size:12px;font-weight:700;background:' + (me.paid?'#3DDB8520':'#FF5FA020') + ';color:' + (me.paid?'#3DDB85':'#FF5FA0') + ';">' + (me.paid?'✅ 支払い済み':'⏳ 未払い') + '</span></div>'; } }
+    document.getElementById('settleContent').innerHTML = '<div style="background:linear-gradient(135deg,#3DDB85,#3BBEFC);border-radius:20px;padding:20px;color:white;margin-bottom:16px;"><div class="fredoka" style="font-size:32px;">¥' + total.toLocaleString() + '</div><p style="opacity:0.85;font-size:12px;">合計金額</p><div style="margin-top:10px;background:rgba(255,255,255,0.2);border-radius:10px;padding:8px 12px;"><p style="font-size:13px;">👥 ' + count + '人割り → <strong>¥' + perPerson.toLocaleString() + '/人</strong></p></div></div>' + membersHtml;
+  }
+
+  function addShopEntry() {
+    var name = document.getElementById('shopName').value.trim(), amount = document.getElementById('shopAmount').value;
+    if (!name || !amount) return; if (!appData.shops) appData.shops = []; appData.shops.push({name: name, amount: amount});
+    document.getElementById('shopName').value = ''; document.getElementById('shopAmount').value = '';
+    callAPI({ action: 'saveShops', shops: appData.shops }, function(data) { if(data) { appData = data; } renderSettle(); });
+  }
+
+  function deleteShop(idx) { appData.shops.splice(idx, 1); callAPI({ action: 'saveShops', shops: appData.shops }, function(data) { if(data) { appData = data; } renderSettle(); }); }
+
+  function doAction(id, type) { callAPI({ action: 'updateAction', itemId: id, name: myName, type: type }, function(data) { if (data) { appData = data; } renderAll(); if (type === '反応') fireConfetti(); }); }
+  function deleteItem(id) { if (!isKanji || !confirm('削除しますか？')) return; callAPI({ action: 'deleteItem', itemId: id }, function(data) { if(data) { appData = data; } renderAll(); }); }
+
+  function toggleAllergy() { var list = document.getElementById('allergyList'), chevron = document.getElementById('allergyChevron'); if (!list) return; if (list.style.display === 'none') { list.style.display = 'block'; if (chevron) chevron.style.transform = 'rotate(180deg)'; } else { list.style.display = 'none'; if (chevron) chevron.style.transform = ''; } }
+  function changeCount(id, delta) {
+    var item = null; for (var k = 0; k < appData.items.length; k++) { if (appData.items[k].id === id) { item = appData.items[k]; break; } }
+    if (!item) return; if (!item.counts) item.counts = {}; var newCount = Math.max(0, (item.counts[myName] || 0) + delta); item.counts[myName] = newCount; renderItemList('飲み物');
+    callAPI({ action: 'updateCount', itemId: id, name: myName, count: newCount }, function(data) { if(data) { appData = data; } renderItemList('飲み物'); });
+  }
+
+  function openAddModal(cat) { addingCat = cat || '食べ物'; document.getElementById('addItemName').value = ''; updateCatUI(); var titles = {'食べ物':'🍕 食べ物を追加','飲み物':'🥂 飲み物を追加','その他':'🎁 備品を追加','メニュー':'🍳 料理メニューを追加'}; document.getElementById('addModalTitle').textContent = titles[addingCat] || '追加'; document.getElementById('addModal').classList.remove('hidden'); setTimeout(function() { document.getElementById('addItemName').focus(); }, 300); }
+  function closeAddModal(e) { document.getElementById('addModal').classList.add('hidden'); }
+  function selectCat(cat) { addingCat = cat; updateCatUI(); }
+  function updateCatUI() { document.querySelectorAll('.cat-option').forEach(function(el) { el.className = 'cat-option'; if (el.dataset.cat === addingCat) { var map = {'食べ物':'sel-food','飲み物':'sel-drink','その他':'sel-other','メニュー':'sel-menu'}; el.classList.add(map[addingCat] || 'sel-food'); } }); }
+  function submitAdd() {
+    var name = document.getElementById('addItemName').value.trim(); if (!name) { document.getElementById('addItemName').focus(); return; }
+    callAPI({ action: 'addItem', cat: addingCat, text: name, price: 0 }, function(data) { if(data) { appData = data; } renderAll(); closeAddModal(); var tab = {'食べ物':'food','飲み物':'drink','その他':'other','メニュー':'menu'}; switchTab(tab[addingCat] || 'food'); });
+  }
+
+  function openAllergyEdit() { document.getElementById('allergyEditName').textContent = myName; var me = appData.members.find(function(m) { return m.name === myName; }); document.getElementById('allergyEditInput').value = me ? (me.allergy || '') : ''; document.getElementById('allergyModal').classList.remove('hidden'); }
+  function closeAllergyModal(e) { if (!e || e.target === document.getElementById('allergyModal')) document.getElementById('allergyModal').classList.add('hidden'); }
+  function saveAllergyEdit() {
+    var allergy = document.getElementById('allergyEditInput').value;
+    callAPI({ action: 'saveAllergyOnly', name: myName, allergy: allergy }, function(data) { if(data) { appData = data; } renderAll(); document.getElementById('allergyModal').classList.add('hidden'); });
+  }
+
+  function showInfo() {
+    var info = appData.info || {}, html = '', fields = [ {key:'venue_name', label:'🏠 会場名'}, {key:'address', label:'📍 住所'}, {key:'map_url', label:'🗺️ マップ', isLink:true}, {key:'supermarket', label:'🛒 近くのスーパー'}, {key:'supermarket_url', label:'🗺️ スーパー地図', isLink:true}, {key:'rule_url', label:'📖 利用マニュアル', isLink:true}, {key:'note', label:'📝 メモ'} ];
+    fields.forEach(function(f) {
+      var val = info[f.key]; if (!val) return;
+      if (f.isLink) html += '<div class="info-row"><span style="font-size:20px;">' + f.label.split(' ')[0] + '</span><div><p style="font-size:11px;color:#aaa;margin-bottom:2px;">' + f.label.slice(2) + '</p><a href="' + val + '" target="_blank" style="color:var(--c-blue);font-weight:700;font-size:13px;">開く →</a></div></div>';
+      else html += '<div class="info-row"><span style="font-size:20px;">' + f.label.split(' ')[0] + '</span><div><p style="font-size:11px;color:#aaa;margin-bottom:2px;">' + f.label.slice(2) + '</p><p style="font-weight:700;font-size:14px;">' + val + '</p></div></div>';
+    });
+    if (!html) html = '<p style="text-align:center;color:#aaa;padding:20px;">スプレッドシートに住所等を入力してください</p>';
+    document.getElementById('infoContent').innerHTML = html; document.getElementById('infoModal').classList.remove('hidden');
+  }
+  function hideInfo(e) { if (!e || e.target === document.getElementById('infoModal') || e.target.tagName === 'BUTTON') document.getElementById('infoModal').classList.add('hidden'); }
+  function showManual() { document.getElementById('manualModal').classList.remove('hidden'); }
+  function hideManual(e) { if (!e || e.target === document.getElementById('manualModal') || e.target.tagName === 'BUTTON') document.getElementById('manualModal').classList.add('hidden'); }
+  function openAlbum() { window.open((appData.info && appData.info['photo_url']) ? appData.info['photo_url'] : 'https://photos.google.com/', '_blank'); }
+
+  function switchTab(tab) {
+    document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
+    document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); b.querySelector('.tab-icon').style.background = ''; b.querySelector('.tab-icon').style.color = ''; });
+    var page = document.getElementById('page-' + tab); if (page) page.classList.add('active');
+    var btn = document.querySelector('[data-page="' + tab + '"]');
+    if (btn) {
+      btn.classList.add('active');
+      var bgMap = {home:'linear-gradient(135deg,#FF5FA0,#B66DFF)',food:'#FF8C3B33',drink:'#3BBEFC33',other:'#B66DFF33',menu:'#FF5FA033',settle:'#3DDB8533'};
+      var clrMap = {food:'#FF8C3B',drink:'#3BBEFC',other:'#B66DFF',menu:'#FF5FA0',settle:'#3DDB85'};
+      btn.querySelector('.tab-icon').style.background = bgMap[tab] || ''; if (clrMap[tab]) btn.querySelector('.tab-icon').style.color = clrMap[tab];
+    }
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
+
+  window.onload = init;
+</script>
+</body>
+</html>
