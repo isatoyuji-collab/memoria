@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>Memoria</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet">
@@ -14,14 +14,15 @@
       --c-bg:#FFF8F0; --c-dark:#1A1A2E;
     }
     * { box-sizing:border-box; }
-    body { font-family:'Noto Sans JP',sans-serif; background:var(--c-bg); color:var(--c-dark); min-height:100vh; -webkit-overflow-scrolling:touch; overflow-x:hidden; }
+    html, body { width: 100%; overflow-x: hidden; overscroll-behavior-y: none; -webkit-overflow-scrolling: touch; }
+    body { font-family:'Noto Sans JP',sans-serif; background:var(--c-bg); color:var(--c-dark); min-height:100vh; }
     .fredoka { font-family:'Fredoka One',cursive; }
     @keyframes spin { to { transform:rotate(360deg); } }
     @keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
     @keyframes gradientShift { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
     @keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
 
-    #loadingOverlay { position:fixed; inset:0; background:rgba(255,248,240,0.93); z-index:55; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; }
+    #loadingOverlay { position:fixed; inset:0; background:rgba(255,248,240,0.85); z-index:999; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; backdrop-filter: blur(2px); }
     #loadingOverlay.hidden { display:none; }
     .spinner { width:40px; height:40px; border:4px solid #eee; border-top-color:var(--c-pink); border-radius:50%; animation:spin 0.8s linear infinite; }
 
@@ -83,7 +84,7 @@
     .action-btn.assign.active { background:var(--c-purple); color:white; }
     .action-btn.bring { border-color:var(--c-green); color:var(--c-green); }
     .action-btn.bring.active { background:var(--c-green); color:white; }
-    .action-btn.del { border-color:#ddd; color:#ccc; font-size:14px; flex:none; width:36px; padding:8px 4px; }
+    .action-btn.del { border-color:#eee; color:#bbb; font-size:14px; flex:none; width:36px; padding:8px 4px; background:#fafafa; }
     .reaction-list { font-size:10px; color:#bbb; padding-left:8px; margin-top:5px; }
 
     .bring-banner { border-radius:18px; padding:12px 16px; margin-bottom:14px; background:linear-gradient(135deg,#3DDB85,#3BBEFC); }
@@ -105,6 +106,7 @@
     .cat-option.sel-menu { border-color:var(--c-pink); background:#FFF0F7; color:var(--c-pink); }
     .submit-btn { width:100%; padding:15px; border-radius:14px; border:none; font-family:'Fredoka One',cursive; font-size:17px; cursor:pointer; background:linear-gradient(135deg,var(--c-pink),var(--c-purple)); color:white; box-shadow:0 6px 20px rgba(255,95,160,0.35); transition:all 0.15s; }
     .submit-btn:active { transform:scale(0.97); }
+    .submit-btn:disabled { opacity:0.5; cursor:not-allowed; transform:none; }
     .empty-state { text-align:center; padding:36px 20px; color:#ccc; }
     .empty-state .big-emoji { font-size:44px; margin-bottom:10px; }
     .info-row { display:flex; align-items:flex-start; gap:12px; padding:12px 0; border-bottom:1px solid #f0f0f0; }
@@ -115,7 +117,7 @@
 
 <div id="loadingOverlay" class="hidden">
   <div class="spinner"></div>
-  <p style="font-size:13px;color:#aaa;font-weight:700;">読み込み中…🎀</p>
+  <p style="font-size:13px;color:#333;font-weight:700;margin-top:8px;">通信中…🎀</p>
 </div>
 
 <div id="loginOverlay">
@@ -194,12 +196,13 @@
         <div style="text-align:center;">👋 最終退館<br><span style="color:var(--c-dark);font-size:16px;">7:00</span></div>
       </div>
       <div style="background:#FFF0F7;border-radius:12px;padding:12px;font-size:12px;color:#d81b60;font-weight:700;text-align:center;line-height:1.5;">
-        🚶‍♀️ 退出ルール：終電でも始発でも退出自由！<br>
+        🚶‍♀️ 退出ルール：いつでも退出可能！<br>
         <span style="font-size:11px;opacity:0.9;">※最後の人は必ず<a href="#" onclick="showManual();return false;" style="text-decoration:underline;color:var(--c-pink);">お片付けルール</a>を読んでね🧹</span>
       </div>
     </div>
 
     <div id="quickStats" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;"></div>
+    
     <div class="allergy-section">
       <div style="background:white;border-radius:14px;padding:12px 14px;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
         <div onclick="toggleAllergy()" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;">
@@ -211,14 +214,6 @@
         </div>
         <div style="margin-top:10px; padding-top:10px; border-top:1px dashed #eee; display:flex; justify-content:flex-end;">
           <button onclick="openAllergyEdit()" style="background:#FFF0F7; border:none; border-radius:12px; padding:8px 14px; font-size:11px; color:var(--c-pink); font-weight:700; cursor:pointer;">✏️ アレルギー等はこちらから登録</button>
-        </div>
-      </div>
-      <div id="allergyList" style="display:none;margin-top:8px;"></div>
-    </div>
-        </div>
-      </div>
-      <div id="allergyList" style="display:none;margin-top:8px;"></div>
-    </div>
         </div>
       </div>
       <div id="allergyList" style="display:none;margin-top:8px;"></div>
@@ -296,7 +291,7 @@
 
 <div id="addModal" class="modal-overlay hidden" onclick="closeAddModal(event)">
   <div class="modal-sheet" onclick="event.stopPropagation()">
-    <div class="modal-handle"></div>
+    <div class="modal-handle" onclick="closeAddModal(event)"></div>
     <div id="addModalTitle" class="modal-title">追加</div>
     <input type="text" id="addItemName" class="form-input" placeholder="内容を入力">
     <div class="cat-select" id="catSelect">
@@ -311,7 +306,7 @@
 
 <div id="allergyModal" class="modal-overlay hidden" onclick="closeAllergyModal(event)">
   <div class="modal-sheet" onclick="event.stopPropagation()">
-    <div class="modal-handle"></div>
+    <div class="modal-handle" onclick="closeAllergyModal(event)"></div>
     <div class="modal-title">🙅 アレルギー・苦手なものを編集</div>
     <p style="font-size:12px;color:#aaa;margin-bottom:12px;text-align:center;">あなた（<span id="allergyEditName"></span>）の情報</p>
     <input type="text" id="allergyEditInput" class="form-input" placeholder="例：エビNG・パクチー苦手">
@@ -321,16 +316,16 @@
 
 <div id="infoModal" class="modal-overlay hidden" onclick="hideInfo(event)">
   <div class="modal-sheet" onclick="event.stopPropagation()">
-    <div class="modal-handle"></div>
+    <div class="modal-handle" onclick="hideInfo(event)"></div>
     <div class="modal-title">📍 道順・会場情報</div>
     <div id="infoContent"></div>
-    <button onclick="hideInfo()" style="width:100%;margin-top:16px;padding:13px;border-radius:13px;border:none;background:#f5f5f5;font-weight:700;font-size:14px;cursor:pointer;">閉じる</button>
+    <button onclick="hideInfo(event)" style="width:100%;margin-top:16px;padding:13px;border-radius:13px;border:none;background:#f5f5f5;font-weight:700;font-size:14px;cursor:pointer;">閉じる</button>
   </div>
 </div>
 
 <div id="manualModal" class="modal-overlay hidden" onclick="hideManual(event)">
   <div class="modal-sheet" style="background:var(--c-dark);" onclick="event.stopPropagation()">
-    <div class="modal-handle" style="background:rgba(255,255,255,0.2);"></div>
+    <div class="modal-handle" style="background:rgba(255,255,255,0.2);" onclick="hideManual(event)"></div>
     <div class="modal-title" style="color:white;">🧹 お片付けルール</div>
     <div style="display:flex;flex-direction:column;gap:10px;">
       <div style="background:rgba(255,255,255,0.07);border-radius:14px;padding:14px;display:flex;gap:12px;"><span style="font-size:22px;">⏰</span><div><p style="font-weight:700;color:white;font-size:13px;">退出30分前から掃除スタート</p><p style="color:#888;font-size:11px;margin-top:2px;">早めに始めて余裕を持って！</p></div></div>
@@ -338,21 +333,24 @@
       <div style="background:rgba(255,255,255,0.07);border-radius:14px;padding:14px;display:flex;gap:12px;"><span style="font-size:22px;">🔑</span><div><p style="font-weight:700;color:white;font-size:13px;">カギを <span style="color:var(--c-yellow);">「0000」</span> に戻す</p><p style="color:#888;font-size:11px;margin-top:2px;">絶対忘れずに！！</p></div></div>
       <div style="background:rgba(255,255,255,0.07);border-radius:14px;padding:14px;display:flex;gap:12px;"><span style="font-size:22px;">📸</span><div><p style="font-weight:700;color:white;font-size:13px;">退出報告写真を3枚</p><p style="color:#888;font-size:11px;margin-top:2px;">リビング・キッチン・カギ</p></div></div>
     </div>
-    <button onclick="hideManual()" style="width:100%;margin-top:16px;padding:13px;border-radius:13px;border:none;background:rgba(255,255,255,0.1);color:white;font-weight:700;font-size:14px;cursor:pointer;">閉じる</button>
+    <button onclick="hideManual(event)" style="width:100%;margin-top:16px;padding:13px;border-radius:13px;border:none;background:rgba(255,255,255,0.1);color:white;font-weight:700;font-size:14px;cursor:pointer;">閉じる</button>
   </div>
 </div>
 
 <div id="chatModal" class="modal-overlay hidden" onclick="closeChat(event)">
   <div class="modal-sheet" style="height:85vh; display:flex; flex-direction:column; padding:20px 14px;" onclick="event.stopPropagation()">
-    <div class="modal-handle"></div>
+    <div class="modal-handle" onclick="closeChat(event)"></div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
       <div class="modal-title" style="margin-bottom:0;">💬 チャット</div>
-      <span id="readCountDisp" style="font-size:11px;color:#aaa;background:#f5f5f5;padding:4px 8px;border-radius:10px;font-weight:700;">既読 --人</span>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span id="readCountDisp" style="font-size:11px;color:#aaa;background:#f5f5f5;padding:4px 8px;border-radius:10px;font-weight:700;">既読 --人</span>
+        <button id="closeChatBtn" onclick="closeChat(event)" style="background:#f0f0f0;color:#888;border:none;width:28px;height:28px;border-radius:50%;font-weight:bold;font-size:12px;display:flex;justify-content:center;align-items:center;cursor:pointer;">✕</button>
+      </div>
     </div>
     <div id="chatFullList" style="flex:1; overflow-y:auto; background:#FFF8F0; border-radius:14px; padding:12px; display:flex; flex-direction:column; gap:12px; margin-bottom:12px; border:2px solid #eee;"></div>
     <div style="display:flex; gap:8px;">
       <input type="text" id="chatInput" class="form-input" style="margin-bottom:0; flex:1;" placeholder="メッセージを入力...">
-      <button onclick="sendChat()" class="submit-btn" style="width:60px; padding:10px 0; font-size:14px; flex:none;">送信</button>
+      <button id="chatSendBtn" onclick="sendChat()" class="submit-btn" style="width:60px; padding:10px 0; font-size:14px; flex:none;">送信</button>
     </div>
   </div>
 </div>
@@ -375,7 +373,6 @@
   function showLoading() { document.getElementById('loadingOverlay').classList.remove('hidden'); }
   function hideLoading() { document.getElementById('loadingOverlay').classList.add('hidden'); }
 
-  // 📡 API通信用のマジック関数
   function callAPI(payload, onSuccess, onFailure) {
     fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) })
       .then(function(r) { return r.json(); })
@@ -581,12 +578,17 @@
     document.getElementById('chatBadgeHeader').classList.add('hidden'); document.getElementById('chatBadgeMini').classList.add('hidden');
     callAPI({ action: 'updateReadTime', name: myName }, function(data) { if (data) { appData = data; renderAll(); } });
   }
-  function closeChat(e) { if (!e || e.target === document.getElementById('chatModal') || e.target.id === 'closeChatBtn') document.getElementById('chatModal').classList.add('hidden'); }
+  function closeChat(e) { if (!e || e.target === document.getElementById('chatModal') || e.target.id === 'closeChatBtn' || e.target.className.includes('modal-handle')) document.getElementById('chatModal').classList.add('hidden'); }
+  
   function sendChat() {
-    var input = document.getElementById('chatInput'); var text = input.value.trim(); if (!text) return; input.value = '';
+    var input = document.getElementById('chatInput'); var text = input.value.trim(); if (!text) return; 
+    input.value = '';
+    var btn = document.getElementById('chatSendBtn');
+    if (btn) btn.disabled = true;
     callAPI({ action: 'sendChatMessage', name: myName, text: text }, function(data) {
+      if (btn) btn.disabled = false;
       if(data) { appData = data; renderAll(); var list = document.getElementById('chatFullList'); if(list) list.scrollTop = list.scrollHeight; }
-    });
+    }, function() { if (btn) btn.disabled = false; });
   }
 
   function renderItemList(cat) {
@@ -605,7 +607,7 @@
       else if (cat === 'メニュー') { reactBtn = '<button class="action-btn like ' + (isLiked?'active':'') + '" onclick="doAction(' + item.id + ',\'反応\')">' + (isLiked?'❤️':'🤍') + ' 作りたい！' + (likeCount>0?' '+likeCount:'') + '</button>'; }
       else { reactBtn = '<button class="action-btn assign ' + (isLiked?'active':'') + '" onclick="doAction(' + item.id + ',\'反応\')">' + (isLiked?'🤝':'👋') + ' 担当する！</button>'; }
       var bringBtn = (cat !== 'メニュー') ? '<button class="action-btn bring ' + (isBring?'active':'') + '" onclick="doAction(' + item.id + ',\'持参\')">🏠 ' + (isBring?'持参✓':'持参する') + '</button>' : '';
-      var delBtn = isKanji ? '<button class="action-btn del" onclick="deleteItem(' + item.id + ')" title="削除">🗑</button>' : '';
+      var delBtn = '<button class="action-btn del" onclick="deleteItem(' + item.id + ')" title="削除">🗑</button>';
       var reactionNames = item.names ? item.names.split(',').map(function(n){return n.trim();}).filter(Boolean).join(' · ') : '';
       var card = document.createElement('div'); card.className = 'item-card ' + (catClass[cat] || 'food');
       card.innerHTML = '<div class="item-name">' + item.text + '</div><div class="item-meta">' + (item.owner ? '🏠 ' + item.owner + ' が持参' : '') + '</div><div class="item-actions">' + reactBtn + bringBtn + delBtn + '</div>' + (reactionNames ? '<div class="reaction-list">👥 ' + reactionNames + '</div>' : '');
@@ -636,35 +638,56 @@
     var name = document.getElementById('shopName').value.trim(), amount = document.getElementById('shopAmount').value;
     if (!name || !amount) return; if (!appData.shops) appData.shops = []; appData.shops.push({name: name, amount: amount});
     document.getElementById('shopName').value = ''; document.getElementById('shopAmount').value = '';
-    callAPI({ action: 'saveShops', shops: appData.shops }, function(data) { if(data) { appData = data; } renderSettle(); });
+    showLoading();
+    callAPI({ action: 'saveShops', shops: appData.shops }, function(data) { hideLoading(); if(data) { appData = data; } renderSettle(); }, function(){ hideLoading(); });
   }
 
-  function deleteShop(idx) { appData.shops.splice(idx, 1); callAPI({ action: 'saveShops', shops: appData.shops }, function(data) { if(data) { appData = data; } renderSettle(); }); }
+  function deleteShop(idx) { 
+    appData.shops.splice(idx, 1); 
+    showLoading();
+    callAPI({ action: 'saveShops', shops: appData.shops }, function(data) { hideLoading(); if(data) { appData = data; } renderSettle(); }, function(){ hideLoading(); }); 
+  }
 
-  function doAction(id, type) { callAPI({ action: 'updateAction', itemId: id, name: myName, type: type }, function(data) { if (data) { appData = data; } renderAll(); if (type === '反応') fireConfetti(); }); }
-  function deleteItem(id) { if (!isKanji || !confirm('削除しますか？')) return; callAPI({ action: 'deleteItem', itemId: id }, function(data) { if(data) { appData = data; } renderAll(); }); }
+  function doAction(id, type) { 
+    showLoading();
+    callAPI({ action: 'updateAction', itemId: id, name: myName, type: type }, function(data) { hideLoading(); if (data) { appData = data; } renderAll(); if (type === '反応') fireConfetti(); }, function(){ hideLoading(); }); 
+  }
+  
+  function deleteItem(id) { 
+    if (!confirm('削除しますか？')) return; 
+    showLoading();
+    callAPI({ action: 'deleteItem', itemId: id }, function(data) { hideLoading(); if(data) { appData = data; } renderAll(); }, function(){ hideLoading(); }); 
+  }
 
   function toggleAllergy() { var list = document.getElementById('allergyList'), chevron = document.getElementById('allergyChevron'); if (!list) return; if (list.style.display === 'none') { list.style.display = 'block'; if (chevron) chevron.style.transform = 'rotate(180deg)'; } else { list.style.display = 'none'; if (chevron) chevron.style.transform = ''; } }
+  
   function changeCount(id, delta) {
+    showLoading();
     var item = null; for (var k = 0; k < appData.items.length; k++) { if (appData.items[k].id === id) { item = appData.items[k]; break; } }
-    if (!item) return; if (!item.counts) item.counts = {}; var newCount = Math.max(0, (item.counts[myName] || 0) + delta); item.counts[myName] = newCount; renderItemList('飲み物');
-    callAPI({ action: 'updateCount', itemId: id, name: myName, count: newCount }, function(data) { if(data) { appData = data; } renderItemList('飲み物'); });
+    if (!item) { hideLoading(); return; }
+    if (!item.counts) item.counts = {}; var newCount = Math.max(0, (item.counts[myName] || 0) + delta); item.counts[myName] = newCount; renderItemList('飲み物');
+    callAPI({ action: 'updateCount', itemId: id, name: myName, count: newCount }, function(data) { hideLoading(); if(data) { appData = data; } renderItemList('飲み物'); }, function(){ hideLoading(); });
   }
 
   function openAddModal(cat) { addingCat = cat || '食べ物'; document.getElementById('addItemName').value = ''; updateCatUI(); var titles = {'食べ物':'🍕 食べ物を追加','飲み物':'🥂 飲み物を追加','その他':'🎁 備品を追加','メニュー':'🍳 料理メニューを追加'}; document.getElementById('addModalTitle').textContent = titles[addingCat] || '追加'; document.getElementById('addModal').classList.remove('hidden'); setTimeout(function() { document.getElementById('addItemName').focus(); }, 300); }
-  function closeAddModal(e) { document.getElementById('addModal').classList.add('hidden'); }
+  function closeAddModal(e) { if (!e || e.target === document.getElementById('addModal') || e.target.className.includes('modal-handle')) document.getElementById('addModal').classList.add('hidden'); }
   function selectCat(cat) { addingCat = cat; updateCatUI(); }
   function updateCatUI() { document.querySelectorAll('.cat-option').forEach(function(el) { el.className = 'cat-option'; if (el.dataset.cat === addingCat) { var map = {'食べ物':'sel-food','飲み物':'sel-drink','その他':'sel-other','メニュー':'sel-menu'}; el.classList.add(map[addingCat] || 'sel-food'); } }); }
+  
   function submitAdd() {
     var name = document.getElementById('addItemName').value.trim(); if (!name) { document.getElementById('addItemName').focus(); return; }
-    callAPI({ action: 'addItem', cat: addingCat, text: name, price: 0 }, function(data) { if(data) { appData = data; } renderAll(); closeAddModal(); var tab = {'食べ物':'food','飲み物':'drink','その他':'other','メニュー':'menu'}; switchTab(tab[addingCat] || 'food'); });
+    showLoading();
+    var countsObj = {}; if (addingCat === '飲み物') countsObj[myName] = 1;
+    var countsStr = Object.keys(countsObj).length > 0 ? JSON.stringify(countsObj) : '';
+    callAPI({ action: 'addItem', cat: addingCat, text: name, price: 0, counts: countsStr }, function(data) { hideLoading(); if(data) { appData = data; } renderAll(); document.getElementById('addModal').classList.add('hidden'); var tab = {'食べ物':'food','飲み物':'drink','その他':'other','メニュー':'menu'}; switchTab(tab[addingCat] || 'food'); }, function(){ hideLoading(); });
   }
 
   function openAllergyEdit() { document.getElementById('allergyEditName').textContent = myName; var me = appData.members.find(function(m) { return m.name === myName; }); document.getElementById('allergyEditInput').value = me ? (me.allergy || '') : ''; document.getElementById('allergyModal').classList.remove('hidden'); }
-  function closeAllergyModal(e) { if (!e || e.target === document.getElementById('allergyModal')) document.getElementById('allergyModal').classList.add('hidden'); }
+  function closeAllergyModal(e) { if (!e || e.target === document.getElementById('allergyModal') || e.target.className.includes('modal-handle')) document.getElementById('allergyModal').classList.add('hidden'); }
   function saveAllergyEdit() {
     var allergy = document.getElementById('allergyEditInput').value;
-    callAPI({ action: 'saveAllergyOnly', name: myName, allergy: allergy }, function(data) { if(data) { appData = data; } renderAll(); document.getElementById('allergyModal').classList.add('hidden'); });
+    showLoading();
+    callAPI({ action: 'saveAllergyOnly', name: myName, allergy: allergy }, function(data) { hideLoading(); if(data) { appData = data; } renderAll(); document.getElementById('allergyModal').classList.add('hidden'); }, function(){ hideLoading(); });
   }
 
   function showInfo() {
@@ -677,9 +700,9 @@
     if (!html) html = '<p style="text-align:center;color:#aaa;padding:20px;">スプレッドシートに住所等を入力してください</p>';
     document.getElementById('infoContent').innerHTML = html; document.getElementById('infoModal').classList.remove('hidden');
   }
-  function hideInfo(e) { if (!e || e.target === document.getElementById('infoModal') || e.target.tagName === 'BUTTON') document.getElementById('infoModal').classList.add('hidden'); }
+  function hideInfo(e) { if (!e || e.target === document.getElementById('infoModal') || e.target.tagName === 'BUTTON' || e.target.className.includes('modal-handle')) document.getElementById('infoModal').classList.add('hidden'); }
   function showManual() { document.getElementById('manualModal').classList.remove('hidden'); }
-  function hideManual(e) { if (!e || e.target === document.getElementById('manualModal') || e.target.tagName === 'BUTTON') document.getElementById('manualModal').classList.add('hidden'); }
+  function hideManual(e) { if (!e || e.target === document.getElementById('manualModal') || e.target.tagName === 'BUTTON' || e.target.className.includes('modal-handle')) document.getElementById('manualModal').classList.add('hidden'); }
   function openAlbum() { window.open((appData.info && appData.info['photo_url']) ? appData.info['photo_url'] : 'https://photos.google.com/', '_blank'); }
 
   function switchTab(tab) {
